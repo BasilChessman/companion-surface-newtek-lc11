@@ -1,0 +1,36 @@
+{
+	"name": "companion-surface-newtek-lc11",
+	"version": "0.1.0",
+	"description": "Bitfocus Companion surface module for the NewTek TriCaster LC-11 (LiveControl) control surface",
+	"main": "dist/main.js",
+	"type": "module",
+	"license": "MIT",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/BasilChessman/companion-surface-newtek-lc11.git"
+	},
+	"scripts": {
+		"build": "rimraf dist && tsc -p tsconfig.build.json",
+		"dev": "tsc -p tsconfig.build.json --watch",
+		"typecheck": "tsc -p tsconfig.json --noEmit",
+		"test": "vitest run",
+		"package": "yarn build && companion-surface-build"
+	},
+	"engines": {
+		"node": "^22.18",
+		"yarn": "^4"
+	},
+	"dependencies": {
+		"@companion-surface/base": "~1.3.0",
+		"serialport": "^13.0.0"
+	},
+	"devDependencies": {
+		"@companion-module/tools": "^2.8.0",
+		"@companion-surface/base-latest": "npm:@companion-surface/base@~1.4.1",
+		"@types/node": "^22.19.15",
+		"rimraf": "^6.1.3",
+		"typescript": "~5.9.3",
+		"vitest": "^3.2.0"
+	},
+	"packageManager": "yarn@4.12.0"
+}

@@ -1,0 +1,21 @@
+{
+	"$schema": "../node_modules/@companion-surface/base/assets/manifest.schema.json",
+	"type": "surface",
+	"id": "newtek-lc11",
+	"name": "NewTek LC-11",
+	"shortname": "newtek-lc11",
+	"description": "Companion surface module for the NewTek TriCaster LC-11 (LiveControl) control surface: 52 buttons, 5 push-knobs, T-bar and 2 joysticks.",
+	"version": "0.0.0",
+	"license": "MIT",
+	"repository": "https://github.com/BasilChessman/companion-surface-newtek-lc11.git",
+	"bugs": "https://github.com/BasilChessman/companion-surface-newtek-lc11/issues",
+	"maintainers": [{ "name": "Basil Chessman" }],
+	"runtime": {
+		"type": "node22",
+		"apiVersion": "0.0.0",
+		"entrypoint": "../dist/main.js"
+	},
+	"keywords": ["newtek", "tricaster", "lc-11", "livecontrol", "control surface", "t-bar"],
+	"products": ["NewTek TriCaster LC-11"],
+	"usbIds": [{ "vendorId": 1027, "productIds": [24577] }]
+}
