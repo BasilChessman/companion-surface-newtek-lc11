@@ -31,22 +31,49 @@ export const CALIBRATION_INPUT_VARIABLE = 'joystick-calibration'
 /** Transfer variable the module reads the saved calibration back from (Companion: expression -> surface) */
 export const CALIBRATION_OUTPUT_VARIABLE = 'joystick-calibration-saved'
 
-/** Calibrations as one line of text, `min,centre,max` per axis in the order A X, A Y, B X, B Y, separated by `;` */
-export function formatCalibration(cals: AxisCalibration[]): string {
-	return cals.map((c) => `${c.min},${c.centre},${c.max}`).join(';')
+/** Everything the calibration covers. The T-bar part is optional: calibrations saved by older versions do not have it. */
+export interface SavedCalibration {
+	/** The four joystick axes in the order A X, A Y, B X, B Y */
+	axes: AxisCalibration[]
+	tbar?: TbarCalibration
 }
 
-/** The reverse of formatCalibration. Undefined unless all four axes are present and sensible. */
-export function parseCalibration(text: string): AxisCalibration[] | undefined {
+/**
+ * Calibration as one line of text: `min,centre,max` per joystick axis in the order A X, A Y, B X, B Y,
+ * then `min,max` for the T-bar, separated by `;`
+ */
+export function formatCalibration(cal: SavedCalibration): string {
+	const parts = cal.axes.map((c) => `${c.min},${c.centre},${c.max}`)
+	if (cal.tbar) parts.push(`${cal.tbar.min},${cal.tbar.max}`)
+	return parts.join(';')
+}
+
+const parseNumbers = (part: string): number[] | undefined => {
+	const nums = part.split(',').map((n) => (n.trim() === '' ? NaN : Number(n)))
+	return nums.every((n) => Number.isInteger(n) && n >= 0 && n <= 255) ? nums : undefined
+}
+
+/**
+ * The reverse of formatCalibration. Undefined unless all four joystick axes are present and sensible.
+ * Text from older versions (joysticks only) is accepted. A T-bar part that is not sensible is left out.
+ */
+export function parseCalibration(text: string): SavedCalibration | undefined {
 	const parts = text.trim().split(';')
-	if (parts.length !== 4) return undefined
-	const result: AxisCalibration[] = []
-	for (const part of parts) {
-		const nums = part.split(',').map((n) => (n.trim() === '' ? NaN : Number(n)))
-		if (nums.length !== 3 || !nums.every((n) => Number.isInteger(n) && n >= 0 && n <= 255)) return undefined
+	if (parts.length !== 4 && parts.length !== 5) return undefined
+	const axes: AxisCalibration[] = []
+	for (const part of parts.slice(0, 4)) {
+		const nums = parseNumbers(part)
+		if (!nums || nums.length !== 3) return undefined
 		const [min, centre, max] = nums
 		if (!(min < centre && centre < max)) return undefined
-		result.push({ min, centre, max })
+		axes.push({ min, centre, max })
+	}
+	const result: SavedCalibration = { axes }
+	if (parts.length === 5) {
+		const nums = parseNumbers(parts[4])
+		if (nums && nums.length === 2 && tbarCalibrationOk({ min: nums[0], max: nums[1] })) {
+			result.tbar = { min: nums[0], max: nums[1] }
+		}
 	}
 	return result
 }
@@ -141,28 +168,102 @@ export class JoystickAxis {
 	}
 }
 
-/** The T-bar reads 0 at one end and 255 at the other, but rests a few counts short of exactly that. */
-export const TBAR_END_ON = 6
-/** Once an end LED is on, the T-bar must move this far from the end before it turns off (avoids flicker). */
-export const TBAR_END_OFF = 14
+/** Default T-bar range until it is calibrated: the full 0 to 255 the panel can report. */
+export const DEFAULT_TBAR_CALIBRATION: TbarCalibration = { min: 0, max: 255 }
 
-/** T-bar value with the last few counts at either end snapped to exactly 0 or 255. */
-export function snapTbar(value: number): number {
-	if (value <= TBAR_END_ON) return 0
-	if (value >= 255 - TBAR_END_ON) return 255
-	return value
+/** Raw counts inside each learned end that still count as fully at that end (the bar rests a few counts short). */
+export const TBAR_END_MARGIN = 5
+
+/** A T-bar calibration where the bar moved less than this far is thrown away. */
+export const MIN_TBAR_TRAVEL = 128
+
+/** Once an end LED is on, the T-bar must move this far (in output counts) from the end before it turns off (avoids flicker). */
+export const TBAR_END_OFF = 8
+
+/** Where the T-bar's two ends are, as raw panel values. */
+export interface TbarCalibration {
+	/** Raw value with the bar all the way up (the 0 end) */
+	min: number
+	/** Raw value with the bar all the way down (the 255 end) */
+	max: number
 }
 
 /**
- * Works out whether the T-bar is at one of its ends. In the capture, pulling the T-bar down ends on 255
- * and pushing it up ends on 0.
+ * The T-bar. Its output is 0 at the up end and 255 at the down end. The last few counts at each end
+ * read as exactly 0 or 255, and the travel in between is stretched over the whole 0 to 255, so the
+ * value moves smoothly off each end instead of jumping.
+ */
+export class TbarAxis {
+	#cal: TbarCalibration
+	#lastRaw: number | undefined
+	/** Range being learned while calibrating; undefined when not calibrating */
+	#learning: TbarCalibration | undefined
+
+	constructor(defaults: TbarCalibration = DEFAULT_TBAR_CALIBRATION) {
+		this.#cal = { ...defaults }
+	}
+
+	get calibrating(): boolean {
+		return this.#learning !== undefined
+	}
+
+	/** The calibration currently in use (a copy). */
+	get calibration(): TbarCalibration {
+		return { ...this.#cal }
+	}
+
+	/** Use a calibration saved earlier. Returns false (and changes nothing) if it is not sensible. */
+	restore(saved: TbarCalibration): boolean {
+		if (!tbarCalibrationOk(saved)) return false
+		this.#cal = { min: saved.min, max: saved.max }
+		return true
+	}
+
+	/** Begin learning the range. Until finishCalibration() the output is the raw value, so the movement can be watched. */
+	startCalibration(): void {
+		const at = this.#lastRaw ?? 128
+		this.#learning = { min: at, max: at }
+	}
+
+	/** Stop learning. Returns true if the new range was used, false if the bar did not move far enough. */
+	finishCalibration(): boolean {
+		const learned = this.#learning
+		this.#learning = undefined
+		if (!learned || !tbarCalibrationOk(learned)) return false
+		this.#cal = learned
+		return true
+	}
+
+	/** Raw panel value in, calibrated value out: 0 at the up end, 255 at the down end. */
+	map(raw: number): number {
+		this.#lastRaw = raw
+		const range = this.#learning ?? this.#cal
+		// Going further than the range known so far widens it
+		if (raw < range.min) range.min = raw
+		if (raw > range.max) range.max = raw
+		if (this.#learning) return raw
+
+		const lo = this.#cal.min + TBAR_END_MARGIN
+		const hi = this.#cal.max - TBAR_END_MARGIN
+		return Math.round(clamp01((raw - lo) / Math.max(1, hi - lo)) * 255)
+	}
+}
+
+function tbarCalibrationOk(cal: TbarCalibration): boolean {
+	const { min, max } = cal
+	return Number.isInteger(min) && Number.isInteger(max) && min >= 0 && max <= 255 && max - min >= MIN_TBAR_TRAVEL
+}
+
+/**
+ * Works out whether the T-bar is at one of its ends, from the calibrated value. In the capture, pulling
+ * the T-bar down ends on 255 and pushing it up ends on 0.
  */
 export class TbarEnds {
 	#end: 'up' | 'down' | null = null
 
 	update(value: number): 'up' | 'down' | null {
-		if (value <= TBAR_END_ON) this.#end = 'up'
-		else if (value >= 255 - TBAR_END_ON) this.#end = 'down'
+		if (value <= 0) this.#end = 'up'
+		else if (value >= 255) this.#end = 'down'
 		else if (this.#end === 'up' && value > TBAR_END_OFF) this.#end = null
 		else if (this.#end === 'down' && value < 255 - TBAR_END_OFF) this.#end = null
 		return this.#end

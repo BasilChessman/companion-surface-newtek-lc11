@@ -7,10 +7,11 @@ import {
 	END_MARGIN,
 	JoystickAxis,
 	MIN_USEFUL_TRAVEL,
+	MIN_TBAR_TRAVEL,
+	TBAR_END_MARGIN,
 	TBAR_END_OFF,
-	TBAR_END_ON,
+	TbarAxis,
 	TbarEnds,
-	snapTbar,
 } from '../src/analog.js'
 import { LC11Parser, type LC11Event } from '../src/protocol.js'
 
@@ -119,23 +120,69 @@ describe('joystick axis calibration', () => {
 })
 
 describe('T-bar', () => {
-	it('snaps the last few counts at each end to exactly 0 and 255', () => {
-		expect(snapTbar(0)).toBe(0)
-		expect(snapTbar(TBAR_END_ON)).toBe(0)
-		expect(snapTbar(255)).toBe(255)
-		expect(snapTbar(255 - TBAR_END_ON)).toBe(255)
-		expect(snapTbar(TBAR_END_ON + 1)).toBe(TBAR_END_ON + 1)
-		expect(snapTbar(128)).toBe(128)
+	it('reads exactly 0 and 255 for the last few counts at each end', () => {
+		const t = new TbarAxis()
+		expect(t.map(0)).toBe(0)
+		expect(t.map(TBAR_END_MARGIN)).toBe(0)
+		expect(t.map(255)).toBe(255)
+		expect(t.map(255 - TBAR_END_MARGIN)).toBe(255)
+		expect(t.map(128)).toBe(128)
+	})
+
+	it('moves smoothly off each end instead of jumping', () => {
+		const t = new TbarAxis()
+		// One count off the end is one step of output (a little over one, as the travel is stretched)
+		expect(t.map(TBAR_END_MARGIN + 1)).toBe(1)
+		expect(t.map(255 - TBAR_END_MARGIN - 1)).toBe(254)
+		// Every raw count moves the output by 1 or 2, never more
+		let last = t.map(0)
+		for (let raw = 1; raw <= 255; raw++) {
+			const v = t.map(raw)
+			expect(v - last, `raw ${raw}`).toBeGreaterThanOrEqual(0)
+			expect(v - last, `raw ${raw}`).toBeLessThanOrEqual(2)
+			last = v
+		}
+	})
+
+	it('calibrates to where the ends of this panel really are', () => {
+		const t = new TbarAxis()
+		t.map(128)
+		t.startCalibration()
+		expect(t.map(20)).toBe(20) // raw values while calibrating
+		t.map(230)
+		t.map(128)
+		expect(t.finishCalibration()).toBe(true)
+		expect(t.calibration).toEqual({ min: 20, max: 230 })
+		expect(t.map(20 + TBAR_END_MARGIN)).toBe(0)
+		expect(t.map(230 - TBAR_END_MARGIN)).toBe(255)
+		expect(t.map(125)).toBe(128)
+	})
+
+	it('keeps the old calibration if the T-bar barely moved', () => {
+		const t = new TbarAxis()
+		t.map(10)
+		t.startCalibration()
+		t.map(10 + MIN_TBAR_TRAVEL - 1)
+		expect(t.finishCalibration()).toBe(false)
+		expect(t.calibration).toEqual({ min: 0, max: 255 })
+	})
+
+	it('restores only sensible saved calibrations', () => {
+		const t = new TbarAxis()
+		expect(t.restore({ min: 200, max: 10 })).toBe(false)
+		expect(t.restore({ min: 0, max: 300 })).toBe(false)
+		expect(t.restore({ min: 12, max: 244 })).toBe(true)
+		expect(t.calibration).toEqual({ min: 12, max: 244 })
 	})
 
 	it('reports the end it is at, with hysteresis so the LED does not flicker', () => {
 		const ends = new TbarEnds()
 		expect(ends.update(128)).toBeNull()
-		expect(ends.update(3)).toBe('up')
-		expect(ends.update(TBAR_END_ON + 3)).toBe('up') // moved a little: still counts as at the end
+		expect(ends.update(0)).toBe('up')
+		expect(ends.update(3)).toBe('up') // moved a little: still counts as at the end
 		expect(ends.update(TBAR_END_OFF)).toBe('up')
 		expect(ends.update(TBAR_END_OFF + 1)).toBeNull()
-		expect(ends.update(254)).toBe('down')
+		expect(ends.update(255)).toBe('down')
 		expect(ends.update(255 - TBAR_END_OFF)).toBe('down')
 		expect(ends.update(255 - TBAR_END_OFF - 1)).toBeNull()
 	})
@@ -203,11 +250,20 @@ describe('calibration text', () => {
 		{ min: 18, centre: 130, max: 253 },
 		{ min: 15, centre: 139, max: 255 },
 	]
-	it('round trips', () => {
-		expect(formatCalibration(cals)).toBe('4,128,238;9,128,255;18,130,253;15,139,255')
-		expect(parseCalibration(formatCalibration(cals))).toEqual(cals)
+	it('round trips, with the T-bar', () => {
+		const cal = { axes: cals, tbar: { min: 3, max: 250 } }
+		expect(formatCalibration(cal)).toBe('4,128,238;9,128,255;18,130,253;15,139,255;3,250')
+		expect(parseCalibration(formatCalibration(cal))).toEqual(cal)
 	})
-	it('rejects anything that is not four sensible axes', () => {
+	it('still reads text saved by the older joystick-only version', () => {
+		expect(parseCalibration('4,128,238;9,128,255;18,130,253;15,139,255')).toEqual({ axes: cals })
+	})
+	it('keeps the joysticks but drops a T-bar part that is not sensible', () => {
+		for (const tbar of ['x', '3', '250,3', '3,300', '3,4']) {
+			expect(parseCalibration(`4,128,238;9,128,255;18,130,253;15,139,255;${tbar}`), tbar).toEqual({ axes: cals })
+		}
+	})
+	it('rejects anything without four sensible joystick axes', () => {
 		for (const bad of ['', '1,2,3', '4,128,238;9,128,255;18,130,253', '4,128,238;9,128,255;18,130,253;15,139,x', '4,128,238;9,128,255;18,130,253;15,139,300', '4,128,238;9,128,255;18,130,253;139,15,255']) {
 			expect(parseCalibration(bad), bad).toBeUndefined()
 		}

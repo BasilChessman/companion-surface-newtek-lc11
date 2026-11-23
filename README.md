@@ -14,7 +14,8 @@ push-knobs, the T-bar and both joysticks, with the panel's LEDs following your b
   the Overlay buttons and the five knob presses).
 - The five knobs as Companion rotary actions (left/right).
 - T-bar and joysticks as Companion variables, 0 to 255. The joysticks are calibrated (exactly 128 at rest,
-  exactly 0 and 255 at the ends, with a dead zone), and there is a calibration option in the surface settings. The result can be kept across restarts in a persistent custom variable (see the help page).
+  exactly 0 and 255 at the ends, with a dead zone), and so is the T-bar (exactly 0 and 255 at the ends, smooth in
+  between, updated up to every 10 ms). There is one calibration option in the surface settings for both. The result can be kept across restarts in a persistent custom variable (see the help page).
 - Button LEDs, on or off: a button lights when its colour in Companion is not black.
 - The two T-bar LEDs light when the T-bar is all the way up or all the way down.
 

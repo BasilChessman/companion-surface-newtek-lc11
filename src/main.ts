@@ -73,10 +73,10 @@ const LC11Plugin: SurfacePlugin<LC11PluginInfo> = {
 				{
 					id: 'joystick_calibrate',
 					type: 'checkbox',
-					label: 'Calibrate joysticks',
+					label: 'Calibrate joysticks and T-bar',
 					default: false,
 					tooltip:
-						'Leave both sticks at rest and tick this. Then move each stick through its full range, including the corners, let go, and untick it. The result is used straight away. To keep it across restarts, fill in the two Saved joystick calibration settings below (see the help page).',
+						'Leave both sticks at rest and tick this. Then move each stick through its full range, including the corners, and let go. Move the T-bar all the way to both ends. Then untick it. The result is used straight away. To keep it across restarts, fill in the two Saved calibration settings below (see the help page).',
 				},
 				{
 					id: 'joystick_deadzone',

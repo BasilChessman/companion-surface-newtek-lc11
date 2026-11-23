@@ -1,7 +1,14 @@
 import { EventEmitter } from 'node:events'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { SurfaceContext } from '@companion-surface/base'
-import { LC11Surface, LED_BATCH_MS, MAX_ROTATE_STEPS_PER_EVENT, VARIABLE_INTERVAL_MS, type SerialPortLike } from '../src/instance.js'
+import {
+	LC11Surface,
+	LED_BATCH_MS,
+	MAX_ROTATE_STEPS_PER_EVENT,
+	TBAR_INTERVAL_MS,
+	VARIABLE_INTERVAL_MS,
+	type SerialPortLike,
+} from '../src/instance.js'
 
 class FakePort extends EventEmitter implements SerialPortLike {
 	isOpen = true
@@ -84,20 +91,27 @@ describe('LC11Surface', () => {
 		expect(ctx.rotateRightById.mock.calls.length + ctx.rotateLeftById.mock.calls.length).toBe(MAX_ROTATE_STEPS_PER_EVENT)
 	})
 
-	it('sends T-bar and joystick values as variables, throttled and only when changed', () => {
-		for (let v = 0; v < 200; v++) port.send(`~4${v.toString(16).padStart(2, '0')}\r`)
-		expect(ctx.sendVariableValue).not.toHaveBeenCalled() // nothing until the first flush
-		vi.advanceTimersByTime(VARIABLE_INTERVAL_MS)
-		expect(ctx.sendVariableValue).toHaveBeenCalledExactlyOnceWith('tbar', 199) // newest value wins
+	it('sends the T-bar straight away, then at most every TBAR_INTERVAL_MS with the newest value', () => {
+		port.send('~480\r')
+		expect(ctx.sendVariableValue).toHaveBeenCalledExactlyOnceWith('tbar', 128) // no waiting for the first move
+		for (let v = 0x81; v < 0xc8; v++) port.send(`~4${v.toString(16)}\r`)
+		expect(ctx.sendVariableValue).toHaveBeenCalledTimes(1) // held back until the gap has passed
+		vi.advanceTimersByTime(TBAR_INTERVAL_MS)
+		expect(ctx.sendVariableValue).toHaveBeenCalledTimes(2)
+		expect(ctx.sendVariableValue).toHaveBeenLastCalledWith('tbar', 202) // raw 199, stretched: newest value wins
 
+		vi.advanceTimersByTime(VARIABLE_INTERVAL_MS)
 		port.send('~4C7\r') // same value again
 		vi.advanceTimersByTime(VARIABLE_INTERVAL_MS)
-		expect(ctx.sendVariableValue).toHaveBeenCalledTimes(1)
+		expect(ctx.sendVariableValue).toHaveBeenCalledTimes(2)
+	})
+
+	it('sends joystick values as variables, throttled and only when changed', () => {
 
 		// Joystick values are calibrated: these four readings are all near each stick's rest position, so they read 128
 		port.send('^57F83\r^78090\r')
 		vi.advanceTimersByTime(VARIABLE_INTERVAL_MS)
-		expect(ctx.sendVariableValue.mock.calls.slice(1)).toEqual(
+		expect(ctx.sendVariableValue.mock.calls).toEqual(
 			expect.arrayContaining([
 				['joystick-a-x', 128],
 				['joystick-a-y', 128],
@@ -134,16 +148,45 @@ describe('LC11Surface', () => {
 			expect(port.written).toEqual([])
 		})
 
-		it('sends the T-bar variable with the last few counts at each end snapped to 0 and 255', () => {
+		it('sends the T-bar variable with the last few counts at each end read as 0 and 255', () => {
 			port.send('~404\r')
-			vi.advanceTimersByTime(VARIABLE_INTERVAL_MS)
+			vi.advanceTimersByTime(TBAR_INTERVAL_MS)
 			expect(ctx.sendVariableValue).toHaveBeenLastCalledWith('tbar', 0)
 			port.send('~4FB\r')
-			vi.advanceTimersByTime(VARIABLE_INTERVAL_MS)
+			vi.advanceTimersByTime(TBAR_INTERVAL_MS)
 			expect(ctx.sendVariableValue).toHaveBeenLastCalledWith('tbar', 255)
 			port.send('~480\r')
-			vi.advanceTimersByTime(VARIABLE_INTERVAL_MS)
+			vi.advanceTimersByTime(TBAR_INTERVAL_MS)
 			expect(ctx.sendVariableValue).toHaveBeenLastCalledWith('tbar', 128)
+		})
+
+		it('calibrates with the joysticks, saves it with them, and uses it again after a restart', async () => {
+			const tbarValue = (c: typeof ctx) => c.sendVariableValue.mock.calls.filter((call) => call[0] === 'tbar').at(-1)?.[1]
+			port.send('~480\r')
+			await surface.updateConfig({ joystick_calibrate: true })
+			port.send('~414\r') // this panel's up end: 20
+			port.send('~4E6\r') // and its down end: 230
+			port.send('~480\r')
+			await surface.updateConfig({ joystick_calibrate: false })
+			const saved = ctx.sendVariableValue.mock.calls.filter(([name]) => name === 'joystick-calibration')
+			expect(saved).toHaveLength(1)
+			const text = saved[0][1] as string
+			expect(text.endsWith(';20,230')).toBe(true)
+
+			vi.advanceTimersByTime(TBAR_INTERVAL_MS)
+			port.send('~4E1\r') // 225: within the margin of the new down end
+			vi.advanceTimersByTime(TBAR_INTERVAL_MS)
+			expect(tbarValue(ctx)).toBe(255)
+
+			// A fresh surface (Companion restarted) is given the saved text back and uses it
+			const ctx2 = makeContext()
+			const port2 = new FakePort()
+			const fresh = new LC11Surface('newtek-lc11:TEST2', port2, ctx2)
+			await fresh.init()
+			fresh.onVariableValue('joystick-calibration-saved', text)
+			port2.send('~419\r') // 25: within the margin of the new up end
+			expect(tbarValue(ctx2)).toBe(0)
+			await fresh.close()
 		})
 	})
 
@@ -204,7 +247,7 @@ describe('LC11Surface', () => {
 			const saved = ctx.sendVariableValue.mock.calls.filter(([name]) => name === 'joystick-calibration')
 			expect(saved).toHaveLength(1)
 			const text = saved[0][1] as string
-			expect(text).toBe('20,128,250;10,128,245;18,130,253;15,139,255') // B was not moved, so it keeps its defaults
+			expect(text).toBe('20,128,250;10,128,245;18,130,253;15,139,255;0,255') // B and the T-bar were not moved, so they keep their defaults
 
 			// A fresh surface (Companion restarted) is given the saved text back and uses it
 			const ctx2 = makeContext()

@@ -84,7 +84,7 @@ export const CONTROLS: readonly ControlDef[] = [
 
 /** The T-bar and joysticks are analog, so Companion receives them as variables rather than controls. */
 export const TRANSFER_VARIABLES: Array<SurfaceInputVariable | SurfaceOutputVariable> = [
-	{ id: 'tbar', type: 'input', name: 'T-bar', description: 'T-bar position, 0 to 255' },
+	{ id: 'tbar', type: 'input', name: 'T-bar', description: 'T-bar position, 0 (up) to 255 (down), calibrated' },
 	{ id: 'joystick-a-x', type: 'input', name: 'Joystick A X', description: '0 to 255, centre is about 128' },
 	{ id: 'joystick-a-y', type: 'input', name: 'Joystick A Y', description: '0 to 255, centre is about 128' },
 	{ id: 'joystick-b-x', type: 'input', name: 'Joystick B X', description: '0 to 255, centre is about 128' },
@@ -92,13 +92,13 @@ export const TRANSFER_VARIABLES: Array<SurfaceInputVariable | SurfaceOutputVaria
 	{
 		id: CALIBRATION_INPUT_VARIABLE,
 		type: 'input',
-		name: 'Saved joystick calibration (write to)',
-		description: 'Optional. A custom variable with Persist value ticked, to keep the joystick calibration across restarts.',
+		name: 'Saved calibration (write to)',
+		description: 'Optional. A custom variable with Persist value ticked, to keep the joystick and T-bar calibration across restarts.',
 	},
 	{
 		id: CALIBRATION_OUTPUT_VARIABLE,
 		type: 'output',
-		name: 'Saved joystick calibration (read from)',
+		name: 'Saved calibration (read from)',
 		description: 'Optional. The same custom variable, written as an expression, eg $(custom:lc11_calibration)',
 	},
 ]

@@ -47,7 +47,7 @@ land in.
 
 | Value | Range |
 |---|---|
-| T-bar | 0 to 255. The last few counts at each end read exactly 0 and 255. |
+| T-bar | 0 (all the way up) to 255 (all the way down), calibrated. The last few counts at each end read exactly 0 and 255, and the travel in between is stretched to fill the range, so the value moves smoothly off each end. Updates are sent as fast as every 10 ms, for smooth transitions. |
 | Joystick A X / Y, Joystick B X / Y | 0 to 255, calibrated: exactly 128 at rest, exactly 0 and 255 at the ends. |
 
 The direction of each axis is not documented, so check which way is which on your panel.
@@ -56,30 +56,33 @@ The direction of each axis is not documented, so check which way is which on you
 stay dark until the T-bar has moved once after the surface connects, because the panel does not report its
 position until it moves.
 
-**Joystick calibration.** A raw stick never quite reaches 0 or 255, each axis reaches a different place, and a
+**Calibration (joysticks and T-bar).** A raw stick never quite reaches 0 or 255, each axis reaches a different place, and a
 released stick settles a few counts either side of the middle. So the values are calibrated: a small dead zone
 around the centre reads exactly 128, and each side of each axis is scaled so full travel reads exactly 0 or 255.
 The module starts with settings measured on one LC-11 and widens them automatically if a stick goes further.
+The T-bar also rests a few counts short of its ends, and different panels stop in different places.
 For the best result, calibrate your own panel in the LC-11's settings on the **Surfaces** page:
 
-1. Leave both sticks **at rest** and tick **Calibrate joysticks**.
+1. Leave both sticks **at rest** and tick **Calibrate joysticks and T-bar**.
 2. Move each stick through its full range, around the edge and into the corners, a few times.
-3. Let go so they rest in the middle, then **untick** it.
+3. Move the T-bar all the way to both ends.
+4. Let go of the sticks so they rest in the middle, then **untick** it.
 
-While it is ticked the values show the raw numbers. If a stick did not move far enough, it keeps its previous
-calibration (a warning is written to the log). **Joystick dead zone (%)** in the same settings changes how far
+While it is ticked the values show the raw numbers. If a stick or the T-bar did not move far enough, it keeps its
+previous calibration (a warning is written to the log). **Joystick dead zone (%)** in the same settings changes how far
 from the centre a stick has to move before the value leaves 128 (default 5).
 
 **Keeping the calibration after Companion restarts.** A module cannot store anything itself, but Companion can store
 it for you, using a custom variable. Do this once:
 
 1. Go to **Variables > Custom Variables** and add a variable named `lc11_calibration`. Tick **Persist value**.
-2. In the LC-11's settings on the **Surfaces** page, set **Saved joystick calibration (write to)** to `lc11_calibration`.
-3. In the same settings, type `$(custom:lc11_calibration)` into **Saved joystick calibration (read from)**.
-4. Calibrate as above. When you untick **Calibrate joysticks**, the result is written to the variable, and Companion
+2. In the LC-11's settings on the **Surfaces** page, set **Saved calibration (write to)** to `lc11_calibration`.
+3. In the same settings, type `$(custom:lc11_calibration)` into **Saved calibration (read from)**.
+4. Calibrate as above. When you untick **Calibrate joysticks and T-bar**, the result is written to the variable, and Companion
    gives it back to the module every time it starts.
 
 Without these two settings everything still works. The calibration just lasts until Companion restarts.
+A calibration saved by an older version of this module (joysticks only) still loads; calibrate again to add the T-bar.
 
 ### Known limits
 

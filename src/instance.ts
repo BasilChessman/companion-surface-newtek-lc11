@@ -15,10 +15,10 @@ import {
 	DEFAULT_CALIBRATION,
 	DEFAULT_DEADZONE_PERCENT,
 	JoystickAxis,
+	TbarAxis,
 	TbarEnds,
 	formatCalibration,
 	parseCalibration,
-	snapTbar,
 } from './analog.js'
 
 /** The small part of a serial port this surface needs, so tests can supply a fake. */
@@ -42,6 +42,13 @@ export const MAX_ROTATE_STEPS_PER_EVENT = 16
 /** Minimum gap between updates of any one variable. The T-bar and joysticks can report hundreds of times a second. */
 export const VARIABLE_INTERVAL_MS = 50
 
+/**
+ * Minimum gap between T-bar updates. Much shorter than for the joysticks: anything slower shows as steps
+ * when the T-bar drives a video transition. A change is sent straight away when the last one is older than
+ * this, otherwise as soon as the gap has passed (always with the newest value).
+ */
+export const TBAR_INTERVAL_MS = 10
+
 export class LC11Surface implements SurfaceInstance {
 	readonly #logger: ModuleLogger
 	readonly #surfaceId: string
@@ -58,7 +65,11 @@ export class LC11Surface implements SurfaceInstance {
 	#ledTimer: NodeJS.Timeout | undefined
 
 	#restoredText = ''
+	readonly #tbar = new TbarAxis()
 	readonly #tbarEnds = new TbarEnds()
+	#tbarPending: number | undefined
+	#tbarSentAt = -Infinity
+	#tbarTimer: NodeJS.Timeout | undefined
 	readonly #axes = {
 		a: { x: new JoystickAxis(DEFAULT_CALIBRATION.a.x), y: new JoystickAxis(DEFAULT_CALIBRATION.a.y) },
 		b: { x: new JoystickAxis(DEFAULT_CALIBRATION.b.x), y: new JoystickAxis(DEFAULT_CALIBRATION.b.y) },
@@ -103,9 +114,10 @@ export class LC11Surface implements SurfaceInstance {
 				}
 				break
 			case 'tbar': {
-				this.#pendingVariables.set('tbar', snapTbar(event.value))
+				const value = this.#tbar.map(event.value)
+				this.#queueTbar(value)
 				// The two LEDs by the T-bar show when it is all the way up or all the way down
-				const end = this.#tbarEnds.update(event.value)
+				const end = this.#tbarEnds.update(value)
 				const upChanged = this.#leds.set(TBAR_UP_LED, end === 'up')
 				const downChanged = this.#leds.set(TBAR_DOWN_LED, end === 'down')
 				if (upChanged || downChanged) this.#scheduleLeds()
@@ -125,6 +137,24 @@ export class LC11Surface implements SurfaceInstance {
 			this.#context.sendVariableValue(name, value)
 		}
 		this.#pendingVariables.clear()
+	}
+
+	#queueTbar(value: number): void {
+		this.#tbarPending = value
+		if (this.#tbarTimer) return // already waiting: the newest value goes when the gap has passed
+		const wait = this.#tbarSentAt + TBAR_INTERVAL_MS - performance.now()
+		if (wait <= 0) this.#flushTbar()
+		else this.#tbarTimer = setTimeout(this.#flushTbar, wait)
+	}
+
+	#flushTbar = (): void => {
+		this.#tbarTimer = undefined
+		const value = this.#tbarPending
+		this.#tbarPending = undefined
+		if (value === undefined || this.#closing || this.#sentVariables.get('tbar') === value) return
+		this.#sentVariables.set('tbar', value)
+		this.#tbarSentAt = performance.now()
+		this.#context.sendVariableValue('tbar', value)
 	}
 
 	#writeLines(lines: string[]): void {
@@ -155,6 +185,8 @@ export class LC11Surface implements SurfaceInstance {
 		this.#flushTimer = undefined
 		if (this.#ledTimer) clearTimeout(this.#ledTimer)
 		this.#ledTimer = undefined
+		if (this.#tbarTimer) clearTimeout(this.#tbarTimer)
+		this.#tbarTimer = undefined
 		this.#leds.clear()
 		this.#writeLines(this.#leds.takeChanges()) // leave the panel dark: it keeps LED states until unplugged
 		if (this.#port.isOpen) {
@@ -178,7 +210,7 @@ export class LC11Surface implements SurfaceInstance {
 	 * back through a second one when Companion starts.
 	 */
 	#publishCalibration(): void {
-		const text = formatCalibration(this.#axisList.map((axis) => axis.calibration))
+		const text = formatCalibration({ axes: this.#axisList.map((axis) => axis.calibration), tbar: this.#tbar.calibration })
 		this.#restoredText = text // our own value coming back round is not news
 		this.#context.sendVariableValue(CALIBRATION_INPUT_VARIABLE, text)
 	}
@@ -188,13 +220,14 @@ export class LC11Surface implements SurfaceInstance {
 		if (value === this.#restoredText || this.#axisList[0].calibrating) return
 		const parsed = parseCalibration(value)
 		if (!parsed) {
-			if (value.trim() !== '') this.#logger.warn(`Ignoring the saved joystick calibration, it is not valid: ${value}`)
+			if (value.trim() !== '') this.#logger.warn(`Ignoring the saved calibration, it is not valid: ${value}`)
 			return
 		}
 		this.#restoredText = value
 		const axes = this.#axisList
-		const used = parsed.filter((cal, i) => axes[i].restore(cal)).length
-		if (used > 0) this.#logger.info('Using the joystick calibration saved in Companion')
+		const used = parsed.axes.filter((cal, i) => axes[i].restore(cal)).length
+		const tbarUsed = parsed.tbar !== undefined && this.#tbar.restore(parsed.tbar)
+		if (used > 0 || tbarUsed) this.#logger.info('Using the calibration saved in Companion')
 	}
 
 	async updateConfig(config: Record<string, any>): Promise<void> {
@@ -206,16 +239,19 @@ export class LC11Surface implements SurfaceInstance {
 		const isCalibrating = axes[0].calibrating
 		if (wantCalibrating && !isCalibrating) {
 			for (const axis of axes) axis.startCalibration()
-			this.#logger.info('Joystick calibration started: move both sticks through their full range, then untick the setting')
+			this.#tbar.startCalibration()
+			this.#logger.info(
+				'Calibration started: move both sticks through their full range and the T-bar to both ends, then untick the setting',
+			)
 		} else if (!wantCalibrating && isCalibrating) {
-			const results = axes.map((axis) => axis.finishCalibration())
+			const results = [...axes.map((axis) => axis.finishCalibration()), this.#tbar.finishCalibration()]
 			if (results.some(Boolean)) this.#publishCalibration()
 			if (results.every(Boolean)) {
-				this.#logger.info('Joystick calibration finished')
+				this.#logger.info('Calibration finished')
 			} else {
-				const names = ['A X', 'A Y', 'B X', 'B Y']
+				const names = ['joystick A X', 'joystick A Y', 'joystick B X', 'joystick B Y', 'T-bar']
 				const skipped = names.filter((_, i) => !results[i]).join(', ')
-				this.#logger.warn(`Joystick calibration: not enough movement on ${skipped}; the previous calibration was kept for those axes`)
+				this.#logger.warn(`Calibration: not enough movement on ${skipped}; the previous calibration was kept for those`)
 			}
 		}
 	}
