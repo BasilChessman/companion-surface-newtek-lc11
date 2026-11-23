@@ -43,7 +43,7 @@ need two.
 | `^F ff` | bit 7 Fade, bit 6 FX |
 | `^1 ff` | bit 7 FTB, 6 Alt, 5 Overlay EXT, 4 Overlay DDR1, 3 Overlay DDR2, 2 Overlay TXT |
 
-Examples (all LEDs are single-colour on/off):
+Examples (all LEDs are single-color on/off):
 
 - `~F7FF` lights Effects button 1 only; `~FFFF` turns the whole Effects row off.
 - `~2FFD` lights the Live BKG button.

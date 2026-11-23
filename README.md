@@ -2,7 +2,7 @@
 
 A [Bitfocus Companion](https://bitfocus.io/companion) surface module for the **NewTek TriCaster LC-11
 (LiveControl)** control surface. It lets you use the LC-11 as a Companion surface: every button, the five
-push-knobs, the T-bar and both joysticks, with the panel's LEDs following your button colours.
+push-knobs, the T-bar and both joysticks, with the panel's LEDs following your button colors.
 
 > **Status: early (0.1.0).** Developed and tested on macOS with Companion 5.1 and one LC-11. It is built against surface API 1.3, so
 > Companion 5.0 should work too, but that is not yet confirmed. Reports from
@@ -16,7 +16,7 @@ push-knobs, the T-bar and both joysticks, with the panel's LEDs following your b
 - T-bar and joysticks as Companion variables, 0 to 255. The joysticks are calibrated (exactly 128 at rest,
   exactly 0 and 255 at the ends, with a dead zone), and so is the T-bar (exactly 0 and 255 at the ends, smooth in
   between, updated up to every 10 ms). There is one calibration option in the surface settings for both. The result can be kept across restarts in a persistent custom variable (see the help page).
-- Button LEDs, on or off: a button lights when its colour in Companion is not black.
+- Button LEDs, on or off: a button lights when its color in Companion is not black.
 - The two T-bar LEDs light when the T-bar is all the way up or all the way down.
 
 Not supported: AUTO and TAKE have no LED on this panel, and the joysticks' Z axis / twist has not been seen
@@ -57,6 +57,6 @@ The module is built against the oldest surface API that current Companion releas
 `rotateRightById` call per click (1.3 has no `rotateById(delta)`). The test suite also pulls in the newer base
 package under the name `@companion-surface/base-latest`, only to reuse its layout validator.
 
-## Licence
+## License
 
 MIT. See [LICENSE](LICENSE). This project is not affiliated with or endorsed by NewTek, Vizrt or Bitfocus.

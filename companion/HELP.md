@@ -11,13 +11,13 @@ uses the LC-11 first: only one program can use its serial port at a time.
   Fade All, Take All, the four Overlay source buttons, Fade Overlay and Take Overlay.
 - The **five push-knobs** (Speed, FX, DDR1, DDR2, TXT) as controls that can be pressed **and** turned.
 - The **T-bar** and **both joysticks** as surface variables, with calibration, and **LEDs** that follow your button
-  colours and the T-bar position (below).
+  colors and the T-bar position (below).
 
 ### Layout
 
 The surface is a grid of 4 rows by 18 columns, laid out so each row of the grid lines up with the same row
 of the panel. The three source rows (Effects, Live, Preview) are rows 0 to 2 on the left, and AUTO and TAKE
-are on row 3 in the centre. The Transition section is in columns 12 and 13. The Overlay section is in
+are on row 3 in the center. The Transition section is in columns 12 and 13. The Overlay section is in
 columns 14 to 17: its three knobs are on row 1, its four source buttons on row 2, and Fade Overlay and
 Take Overlay on row 3, level with AUTO and TAKE.
 
@@ -58,7 +58,7 @@ position until it moves.
 
 **Calibration (joysticks and T-bar).** A raw stick never quite reaches 0 or 255, each axis reaches a different place, and a
 released stick settles a few counts either side of the middle. So the values are calibrated: a small dead zone
-around the centre reads exactly 128, and each side of each axis is scaled so full travel reads exactly 0 or 255.
+around the center reads exactly 128, and each side of each axis is scaled so full travel reads exactly 0 or 255.
 The module starts with settings measured on one LC-11 and widens them automatically if a stick goes further.
 The T-bar also rests a few counts short of its ends, and different panels stop in different places.
 For the best result, calibrate your own panel in the LC-11's settings on the **Surfaces** page:
@@ -70,7 +70,7 @@ For the best result, calibrate your own panel in the LC-11's settings on the **S
 
 While it is ticked the values show the raw numbers. If a stick or the T-bar did not move far enough, it keeps its
 previous calibration (a warning is written to the log). **Joystick dead zone (%)** in the same settings changes how far
-from the centre a stick has to move before the value leaves 128 (default 5).
+from the center a stick has to move before the value leaves 128 (default 5).
 
 **Keeping the calibration after Companion restarts.** A module cannot store anything itself, but Companion can store
 it for you, using a custom variable. Do this once:
@@ -86,8 +86,8 @@ A calibration saved by an older version of this module (joysticks only) still lo
 
 ### Known limits
 
-- **The backlights are on/off only.** The LC-11's LEDs have no colours or brightness. A button lights when
-  its background colour in Companion is anything other than (near) black, for example from a feedback, and
+- **The backlights are on/off only.** The LC-11's LEDs have no colors or brightness. A button lights when
+  its background color in Companion is anything other than (near) black, for example from a feedback, and
   is off when the button is black. AUTO, TAKE and the knob presses have no LED. The two T-bar LEDs show the
   T-bar position (above). All LEDs are switched off when the surface is closed.
 - The LC-11 is found by its USB manufacturer name ("NewTek"). On systems that report the generic driver
