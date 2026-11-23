@@ -86,7 +86,7 @@ const LC11Plugin: SurfacePlugin<LC11PluginInfo> = {
 					min: 0,
 					max: 40,
 					step: 1,
-					tooltip: 'How far from the centre a stick can move before the value changes from 128.',
+					tooltip: 'How far from the center a stick can move before the value changes from 128.',
 				},
 			],
 			},

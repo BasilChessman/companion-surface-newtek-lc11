@@ -268,7 +268,7 @@ export class LC11Surface implements SurfaceInstance {
 	}
 
 	async draw(_signal: AbortSignal, drawProps: SurfaceDrawProps): Promise<void> {
-		// The LEDs are single-colour on/off, so a lit colour means on and black means off
+		// The LEDs are single-color on/off, so a lit color means on and black means off
 		if (drawProps.color !== undefined && this.#leds.set(drawProps.controlId, colorIsLit(drawProps.color))) {
 			this.#scheduleLeds()
 		}

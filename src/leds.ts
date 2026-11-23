@@ -17,8 +17,8 @@ import { ROW_COLUMNS } from './protocol.js'
  *   ^F ff    bit7 Fade, bit6 FX
  *   ^1 ff    bit7 FTB, 6 Alt, 5 Overlay EXT, 4 Overlay DDR 1, 3 Overlay DDR 2, 2 Overlay TXT
  *
- * Two hex digits are enough for the 8-bit groups. The LEDs are single-colour on/off: there is no
- * brightness or colour, and the panel keeps each LED's state until it is changed or the panel is
+ * Two hex digits are enough for the 8-bit groups. The LEDs are single-color on/off: there is no
+ * brightness or color, and the panel keeps each LED's state until it is changed or the panel is
  * unplugged.
  */
 
@@ -60,8 +60,8 @@ export const LED_CONTROL_IDS: readonly string[] = LED_GROUPS.flatMap((g) => Obje
 )
 
 /**
- * Whether a Companion background colour should light the LED. The LEDs are on/off only, so any
- * visible colour means on and black (an unused button) means off.
+ * Whether a Companion background color should light the LED. The LEDs are on/off only, so any
+ * visible color means on and black (an unused button) means off.
  */
 export function colorIsLit(color: string): boolean {
 	const m = /^#?([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(color.trim())

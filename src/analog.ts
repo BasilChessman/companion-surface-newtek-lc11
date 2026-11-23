@@ -4,7 +4,7 @@
  * The raw values from the panel are 0 to 255, but a real stick never quite reaches either end, each axis
  * reaches a different place, and a stick let go of settles a few counts either side of the middle (and
  * not always on the same value). So the raw numbers are not directly usable for something like PTZ
- * control, where "full left" should be exactly 0, "centred" exactly 128 and "full right" exactly 255.
+ * control, where "full left" should be exactly 0, "centered" exactly 128 and "full right" exactly 255.
  */
 
 export interface AxisCalibration {
@@ -81,13 +81,13 @@ export function parseCalibration(text: string): SavedCalibration | undefined {
 /** Half the output range: the calibrated output is 0 to 255 with 128 in the middle. */
 const MID = 128
 
-/** Default size of the neutral band around the centre, as a percentage of the travel. */
+/** Default size of the neutral band around the center, as a percentage of the travel. */
 export const DEFAULT_DEADZONE_PERCENT = 5
 
 /** Raw counts short of the learned end that already count as full deflection (a stick is rarely pushed to the exact same spot twice). */
 export const END_MARGIN = 5
 
-/** A calibration where the stick moved less than this far each way from the centre is thrown away. */
+/** A calibration where the stick moved less than this far each way from the center is thrown away. */
 export const MIN_USEFUL_TRAVEL = 30
 
 const clamp01 = (n: number) => Math.min(1, Math.max(0, n))
@@ -127,7 +127,7 @@ export class JoystickAxis {
 	}
 
 	/**
-	 * Begin learning the range. The stick should be at rest now: wherever it is becomes the centre.
+	 * Begin learning the range. The stick should be at rest now: wherever it is becomes the center.
 	 * Until finishCalibration() the output is the raw value, so the movement can be watched.
 	 */
 	startCalibration(): void {

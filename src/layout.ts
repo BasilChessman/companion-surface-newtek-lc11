@@ -85,10 +85,10 @@ export const CONTROLS: readonly ControlDef[] = [
 /** The T-bar and joysticks are analog, so Companion receives them as variables rather than controls. */
 export const TRANSFER_VARIABLES: Array<SurfaceInputVariable | SurfaceOutputVariable> = [
 	{ id: 'tbar', type: 'input', name: 'T-bar', description: 'T-bar position, 0 (up) to 255 (down), calibrated' },
-	{ id: 'joystick-a-x', type: 'input', name: 'Joystick A X', description: '0 to 255, centre is about 128' },
-	{ id: 'joystick-a-y', type: 'input', name: 'Joystick A Y', description: '0 to 255, centre is about 128' },
-	{ id: 'joystick-b-x', type: 'input', name: 'Joystick B X', description: '0 to 255, centre is about 128' },
-	{ id: 'joystick-b-y', type: 'input', name: 'Joystick B Y', description: '0 to 255, centre is about 128' },
+	{ id: 'joystick-a-x', type: 'input', name: 'Joystick A X', description: '0 to 255, center is about 128' },
+	{ id: 'joystick-a-y', type: 'input', name: 'Joystick A Y', description: '0 to 255, center is about 128' },
+	{ id: 'joystick-b-x', type: 'input', name: 'Joystick B X', description: '0 to 255, center is about 128' },
+	{ id: 'joystick-b-y', type: 'input', name: 'Joystick B Y', description: '0 to 255, center is about 128' },
 	{
 		id: CALIBRATION_INPUT_VARIABLE,
 		type: 'input',
@@ -105,8 +105,8 @@ export const TRANSFER_VARIABLES: Array<SurfaceInputVariable | SurfaceOutputVaria
 
 export function createLayout(): SurfaceSchemaLayoutDefinition {
 	const layout: SurfaceSchemaLayoutDefinition = {
-		// No bitmaps or text: the panel has no displays. Colours are requested so the host passes
-		// each control's feedback colour to draw(), ready for the button backlights.
+		// No bitmaps or text: the panel has no displays. Colors are requested so the host passes
+		// each control's feedback color to draw(), ready for the button backlights.
 		stylePresets: { default: { colors: 'hex' } },
 		controls: {},
 	}

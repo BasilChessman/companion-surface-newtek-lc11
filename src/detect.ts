@@ -20,7 +20,7 @@ export const FT232_PRODUCT_ID = '6001'
  * is what tells it apart.
  *
  * Known limit: where the operating system reports the driver's manufacturer rather than the
- * device's own string (typically Windows, which says "FTDI"), the LC-11 will not be recognised.
+ * device's own string (typically Windows, which says "FTDI"), the LC-11 will not be recognized.
  */
 export function isLC11Port(port: PortInfoLike): boolean {
 	return (

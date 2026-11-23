@@ -1,7 +1,7 @@
 /**
  * NewTek LC-11 serial protocol (panel -> host direction only).
  *
- * Decoded from a labelled capture of a real LC-11: an FTDI FT232 serial port
+ * Decoded from a labeled capture of a real LC-11: an FTDI FT232 serial port
  * (USB 0403:6001), 9600 baud, 8N1. Every message is ASCII and CR (0x0D)
  * terminated. A message starts with `~` or `^`, then an id character, then hex
  * data. Buttons are ACTIVE-LOW: a bit reads 0 while the button is held.
