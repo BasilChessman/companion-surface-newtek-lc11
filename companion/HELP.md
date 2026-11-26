@@ -21,6 +21,12 @@ are on row 3 in the center. The Transition section is in columns 12 and 13. The 
 columns 14 to 17: its three knobs are on row 1, its four source buttons on row 2, and Fade Overlay and
 Take Overlay on row 3, level with AUTO and TAKE.
 
+### Layout page
+
+A ready-made Companion page with every control labeled in its grid position is attached to each
+[release](https://github.com/BasilChessman/companion-surface-newtek-lc11/releases) as
+**newtek-lc11-layout.companionconfig**. Import it on the **Import/Export** page onto an empty page.
+
 ### Using the knobs for rotation
 
 Companion only shows rotate actions on buttons that ask for them:
