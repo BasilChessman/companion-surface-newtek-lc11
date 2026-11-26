@@ -92,6 +92,9 @@ A calibration saved by an older version of this module (joysticks only) still lo
   T-bar position (above). All LEDs are switched off when the surface is closed.
 - The LC-11 is found by its USB manufacturer name ("NewTek"). On systems that report the generic driver
   name instead (commonly Windows, which says "FTDI"), it may not be detected.
+- The NewTek **TriCaster Mini control surface** has the same USB chip and name. Since 0.2.3 this module
+  sends each NewTek panel a short check when it is found, and leaves a Mini alone so the TriCaster Mini
+  module can use it.
 - Tested on macOS with Companion 5.1. It is built so that Companion 5.0 accepts it too; if you try 5.0, please
   report how it goes.
 

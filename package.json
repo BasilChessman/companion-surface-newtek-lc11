@@ -1,6 +1,6 @@
 {
 	"name": "companion-surface-newtek-lc11",
-	"version": "0.2.1",
+	"version": "0.2.3",
 	"description": "Bitfocus Companion surface module for the NewTek TriCaster LC-11 (LiveControl) control surface",
 	"main": "dist/main.js",
 	"type": "module",
